@@ -220,9 +220,11 @@ type SecretStoreProvider struct {
 	// +optional
 	Barbican *BarbicanProvider `json:"barbican,omitempty"`
 
+	// MWSSecretManager configures this store to sync secrets using the MWS Secret Manager provider.
 	// +optional
 	MWSSecretManager *MWSSecretManagerProvider `json:"mwssecretmanager,omitempty"`
 
+	// MWSCertificateManager configures this store to sync secrets using the MWS Certificate Manager provider.
 	// +optional
 	MWSCertificateManager *MWSCertificateManagerProvider `json:"mwscertificatemanager,omitempty"`
 }

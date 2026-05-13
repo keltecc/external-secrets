@@ -5406,8 +5406,10 @@ spec:
                           type: object
                       type: object
                     mwscertificatemanager:
+                      description: MWSCertificateManager configures this store to sync secrets using the MWS Certificate Manager provider.
                       properties:
                         auth:
+                          description: MWSAuth defines the authentication method for the MWS provider.
                           properties:
                             authorizedKeySecretRef:
                               description: |-
@@ -5440,14 +5442,14 @@ spec:
                           required:
                             - authorizedKeySecretRef
                           type: object
-                        projectID:
-                          type: string
                       required:
                         - auth
                       type: object
                     mwssecretmanager:
+                      description: MWSSecretManager configures this store to sync secrets using the MWS Secret Manager provider.
                       properties:
                         auth:
+                          description: MWSAuth defines the authentication method for the MWS provider.
                           properties:
                             authorizedKeySecretRef:
                               description: |-
@@ -5480,8 +5482,6 @@ spec:
                           required:
                             - authorizedKeySecretRef
                           type: object
-                        projectID:
-                          type: string
                       required:
                         - auth
                       type: object
@@ -17127,8 +17127,10 @@ spec:
                           type: object
                       type: object
                     mwscertificatemanager:
+                      description: MWSCertificateManager configures this store to sync secrets using the MWS Certificate Manager provider.
                       properties:
                         auth:
+                          description: MWSAuth defines the authentication method for the MWS provider.
                           properties:
                             authorizedKeySecretRef:
                               description: |-
@@ -17161,14 +17163,14 @@ spec:
                           required:
                             - authorizedKeySecretRef
                           type: object
-                        projectID:
-                          type: string
                       required:
                         - auth
                       type: object
                     mwssecretmanager:
+                      description: MWSSecretManager configures this store to sync secrets using the MWS Secret Manager provider.
                       properties:
                         auth:
+                          description: MWSAuth defines the authentication method for the MWS provider.
                           properties:
                             authorizedKeySecretRef:
                               description: |-
@@ -17201,8 +17203,6 @@ spec:
                           required:
                             - authorizedKeySecretRef
                           type: object
-                        projectID:
-                          type: string
                       required:
                         - auth
                       type: object

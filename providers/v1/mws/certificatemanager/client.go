@@ -1,3 +1,19 @@
+/*
+Copyright © 2025 ESO Maintainer Team
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package certificatemanager
 
 import (
@@ -5,149 +21,122 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 
+	mwssdk "go.mws.cloud/go-sdk/mws"
+	certmanagerclient "go.mws.cloud/go-sdk/service/certmanager/client"
+	certmanagersdk "go.mws.cloud/go-sdk/service/certmanager/sdk"
 	corev1 "k8s.io/api/core/v1"
 
 	esv1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1"
-	mwscommon "github.com/external-secrets/external-secrets/providers/v1/mws/common"
-)
-
-const (
-	CertificateManagerEndpoint = "https://certmanager.mwsapis.ru/certmanager/v1"
-
-	propertyCertificate = "certificate"
-	propertyPrivateKey  = "privateKey"
-	propertyChainedCert = "chainedCert"
 )
 
 var (
-	ErrNotImplemented         = errors.New("not implemented")
-	ErrInvalidCertificateName = errors.New("invalid certificate name")
+	errNotImplemented   = errors.New("not implemented")
+	errUnsetChainedCert = errors.New("chainedCert is not set for this certificate")
 )
 
-type CertificateObj struct {
-	Certificate string `json:"certificate"`
-	PrivateKey  string `json:"privateKey"`
-	ChainedCert string `json:"chainedCert,omitempty"`
-}
+var _ esv1.SecretsClient = (*Client)(nil)
 
+// Client implements the Secrets Client interface for MWS Certificate Manager.
 type Client struct {
-	projectID     string
-	tokenProvider *mwscommon.IAMTokenProvider
+	sdk         *mwssdk.SDK
+	certificate *certmanagersdk.Certificate
 }
 
+// GetSecret gets the secret from MWS Certificate Manager.
 func (c *Client) GetSecret(ctx context.Context, ref esv1.ExternalSecretDataRemoteRef) ([]byte, error) {
-	certificate, err := c.downloadCertificate(ctx, ref.Key)
+	var (
+		certificateName     = ref.Key
+		certificateProperty = ref.Property
+	)
+
+	content, err := c.certificate.GetCertificateContent(ctx, certmanagerclient.GetCertificateContentRequest{
+		Name: certificateName,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to download certificate: %w", err)
+		return nil, fmt.Errorf("failed to get certificate content: %w", err)
 	}
 
-	if ref.Property == "" {
-		buffer, err := json.Marshal(certificate)
+	if certificateProperty == "" {
+		buffer, err := json.Marshal(content)
 		if err != nil {
-			return nil, fmt.Errorf("failed to marshal certificate: %w", err)
+			return nil, fmt.Errorf("failed to marshal certificate content: %w", err)
 		}
 
 		return buffer, nil
 	}
 
-	switch ref.Property {
-	case propertyCertificate:
-		return []byte(certificate.Certificate), nil
+	switch certificateProperty {
+	case "certificate":
+		return []byte(content.Certificate), nil
 
-	case propertyPrivateKey:
-		return []byte(certificate.PrivateKey), nil
+	case "privateKey":
+		return []byte(content.PrivateKey), nil
 
-	case propertyChainedCert:
-		return []byte(certificate.ChainedCert), nil
+	case "chainedCert":
+		if content.ChainedCert == nil {
+			return nil, errUnsetChainedCert
+		}
+
+		return []byte(*content.ChainedCert), nil
 	}
 
-	return nil, fmt.Errorf("invalid certificate property %s", ref.Property)
+	return nil, fmt.Errorf("invalid certificate property %s", certificateProperty)
 }
 
+// GetSecretMap gets the secret map from MWS Certificate Manager.
 func (c *Client) GetSecretMap(ctx context.Context, ref esv1.ExternalSecretDataRemoteRef) (map[string][]byte, error) {
-	certificate, err := c.downloadCertificate(ctx, ref.Key)
+	var certificateName = ref.Key
+
+	content, err := c.certificate.GetCertificateContent(ctx, certmanagerclient.GetCertificateContentRequest{
+		Name: certificateName,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to download certificate: %w", err)
+		return nil, fmt.Errorf("failed to get certificate content: %w", err)
 	}
 
 	secretMap := make(map[string][]byte, 3)
 
-	secretMap[propertyCertificate] = []byte(certificate.Certificate)
-	secretMap[propertyPrivateKey] = []byte(certificate.PrivateKey)
+	secretMap["certificate"] = []byte(content.Certificate)
+	secretMap["privateKey"] = []byte(content.PrivateKey)
 
-	if certificate.ChainedCert != "" {
-		secretMap[propertyChainedCert] = []byte(certificate.ChainedCert)
+	if content.ChainedCert != nil {
+		secretMap["chainedCert"] = []byte(*content.ChainedCert)
 	}
 
 	return secretMap, nil
 }
 
-func (c *Client) GetAllSecrets(ctx context.Context, ref esv1.ExternalSecretFind) (map[string][]byte, error) {
-	return nil, ErrNotImplemented
+// GetAllSecrets gets all secrets from MWS Certificate Manager.
+func (c *Client) GetAllSecrets(context.Context, esv1.ExternalSecretFind) (map[string][]byte, error) {
+	return nil, errNotImplemented
 }
 
+// PushSecret pushes the secret to MWS Certificate Manager.
 func (c *Client) PushSecret(context.Context, *corev1.Secret, esv1.PushSecretData) error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
+// DeleteSecret deletes the secret from MWS Certificate Manager.
 func (c *Client) DeleteSecret(context.Context, esv1.PushSecretRemoteRef) error {
-	return ErrNotImplemented
+	return errNotImplemented
 }
 
+// SecretExists checks does the secret exist in MWS Certificate Manager.
 func (c *Client) SecretExists(context.Context, esv1.PushSecretRemoteRef) (bool, error) {
-	return false, ErrNotImplemented
+	return false, errNotImplemented
 }
 
+// Validate validates the client configuration.
 func (c *Client) Validate() (esv1.ValidationResult, error) {
 	return esv1.ValidationResultUnknown, nil
 }
 
-func (c *Client) Close(_ context.Context) error {
+// Close closes the client.
+func (c *Client) Close(ctx context.Context) error {
+	if err := c.sdk.Close(ctx); err != nil {
+		return fmt.Errorf("failed to close mws sdk: %w", err)
+	}
+
 	return nil
-}
-
-func (c *Client) downloadCertificate(ctx context.Context, name string) (CertificateObj, error) {
-	iamToken, err := c.tokenProvider.GetIAMToken(ctx)
-	if err != nil {
-		return CertificateObj{}, fmt.Errorf("failed to get iam token: %w", err)
-	}
-
-	url := fmt.Sprintf(
-		"%s/projects/%s/certificates/%s:download",
-		CertificateManagerEndpoint, c.projectID, name,
-	)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
-	if err != nil {
-		return CertificateObj{}, fmt.Errorf("failed to create HTTP request: %w", err)
-	}
-
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", iamToken))
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return CertificateObj{}, fmt.Errorf("failed to do http request: %w", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return CertificateObj{}, ErrInvalidCertificateName
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return CertificateObj{}, fmt.Errorf("unexpected http status code %d", resp.StatusCode)
-	}
-
-	var obj CertificateObj
-
-	err = json.NewDecoder(resp.Body).Decode(&obj)
-	if err != nil {
-		return CertificateObj{}, fmt.Errorf("failed to decode certificate body: %w", err)
-	}
-
-	return obj, nil
 }
