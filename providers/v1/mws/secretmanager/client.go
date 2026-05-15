@@ -39,6 +39,8 @@ var _ esv1.SecretsClient = (*Client)(nil)
 type Client struct {
 	sdk           *mwssdk.SDK
 	secretVersion *secretmanagersdk.SecretVersion
+
+	project string
 }
 
 // GetSecret gets the secret from MWS Secret Manager.
@@ -54,6 +56,7 @@ func (c *Client) GetSecret(ctx context.Context, ref esv1.ExternalSecretDataRemot
 	}
 
 	content, err := c.secretVersion.GetData(ctx, secretmanagerclient.GetDataRequest{
+		Project: c.project,
 		Name:    secretName,
 		Version: secretVersion,
 	})
@@ -90,6 +93,7 @@ func (c *Client) GetSecretMap(ctx context.Context, ref esv1.ExternalSecretDataRe
 	}
 
 	content, err := c.secretVersion.GetData(ctx, secretmanagerclient.GetDataRequest{
+		Project: c.project,
 		Name:    secretName,
 		Version: secretVersion,
 	})

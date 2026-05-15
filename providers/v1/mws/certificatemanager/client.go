@@ -41,6 +41,8 @@ var _ esv1.SecretsClient = (*Client)(nil)
 type Client struct {
 	sdk         *mwssdk.SDK
 	certificate *certmanagersdk.Certificate
+
+	project string
 }
 
 // GetSecret gets the secret from MWS Certificate Manager.
@@ -51,7 +53,8 @@ func (c *Client) GetSecret(ctx context.Context, ref esv1.ExternalSecretDataRemot
 	)
 
 	content, err := c.certificate.GetCertificateContent(ctx, certmanagerclient.GetCertificateContentRequest{
-		Name: certificateName,
+		Project: c.project,
+		Name:    certificateName,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate content: %w", err)
@@ -89,7 +92,8 @@ func (c *Client) GetSecretMap(ctx context.Context, ref esv1.ExternalSecretDataRe
 	var certificateName = ref.Key
 
 	content, err := c.certificate.GetCertificateContent(ctx, certmanagerclient.GetCertificateContentRequest{
-		Name: certificateName,
+		Project: c.project,
+		Name:    certificateName,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get certificate content: %w", err)

@@ -97,6 +97,7 @@ func (p *Provider) NewClient(
 	return &Client{
 		sdk:         sdk,
 		certificate: certificate,
+		project:     authorizedKey.ServiceAccount.Project,
 	}, nil
 }
 
