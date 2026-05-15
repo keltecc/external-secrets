@@ -4,17 +4,15 @@ External Secrets Operator integrates with [MWS Secret Manager](https://mws.ru/do
 
 ### Authentication
 
-We support authentication using an authorized key for service account. The service account and the authorized key could be created via MWS Console, see [documentation](https://mws.ru/docs/cloud-platform/iam/keys.html).
+The operator supports authentication using an authorized key for a service account. You can create the service account and authorized key in the MWS Console. See the [documentation](https://mws.ru/docs/cloud-platform/iam/keys.html).
 
-Alternatively, the service account and the authorized key could be generated via [mws cli](https://mws.ru/docs/cloud-platform/mws-cli/general/quickstart-mws-cli.html) using the following commands:
+The service account must have the following role to download the secret content:
 
-```bash
-mws iam service-account create "iam/projects/{project}/serviceAccounts/{service-account}"
-
-mws iam authorized-key create "iam/projects/{project}/serviceAccounts/{service-account}/authorizedKeys/{key-name}" --key-algorithm ES256
+```
+secretmanager.secret.user
 ```
 
-The authorized key will have the following format:
+The authorized key has the following format:
 
 ```json
 {
@@ -25,17 +23,34 @@ The authorized key will have the following format:
 }
 ```
 
-To use the authorized key, create it as a regular Kubernetes Secret:
+To use the authorized key, create a Kubernetes Secret from the key file:
 
 ```bash
 kubectl create secret generic mws-auth --from-file=./authorized-key
 ```
 
-The created secret should be accessible as a SecretKeyRef.
+Alternatively, you can declare the Secret as a Kubernetes resource:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mws-auth
+stringData:
+  authorized-key: |
+    {
+      "keyId" : "projects/{project}/serviceAccounts/{service-account}/authorizedKeys/{key-name}",
+      "privateKey" : "MEECAQ...6w==",
+      "publicKey" : "MFkwEw...JA==",
+      "algorithm" : "ES256"
+    }
+```
+
+The resulting Secret must be accessible as a SecretKeyRef.
 
 ### Provider definition
 
-A provider for MWS Secret Manager could be defined as an SecretStore, a reference to the authorized key should be passed in the `auth` object:
+To define a provider for MWS Secret Manager, create a SecretStore and pass a reference to the authorized key in the `auth` field:
 
 ```yaml
 apiVersion: external-secrets.io/v1
@@ -53,7 +68,7 @@ spec:
 
 ### Creating an external secret
 
-To create a kubernetes secret from the MWS Secret Manager, create an ExternalSecret based on the SecretStore:
+To create a Kubernetes Secret from a secret stored in MWS Secret Manager, create an ExternalSecret that references the SecretStore:
 
 ```yaml
 apiVersion: external-secrets.io/v1
@@ -68,16 +83,16 @@ spec:
   - secretKey: my-secret
     remoteRef:
       key: my-secret
-      version: 1
+      version: "1"
       property: password
 ```
 
-The secret will contain the value of the target property.
+The resulting Secret contains the value of the specified property.
 
-When the property is not defined, the secret will contain the JSON object containing all existing properties:
+If the property is not defined, the Secret contains a JSON object with all existing properties:
 
 ```json
 {"username":"...","password":"..."}
 ```
 
-When the version is not defined, the secret will contain the current version of the secret.
+If the version is not defined, the Secret contains the current version of the secret. Alternatively, you can use the word `current` for the version.
